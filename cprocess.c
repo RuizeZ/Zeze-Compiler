@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include "compiler.h"
-struct compile_provess *compile_process_create(const char *filename, const char *filename_out, int flags)
+struct compile_process *compile_process_create(const char *filename, const char *filename_out, int flags)
 {
     FILE *file = fopen(filename, "r");
     if (!file)
@@ -12,7 +12,7 @@ struct compile_provess *compile_process_create(const char *filename, const char 
     FILE *out_file = NULL;
     if (filename_out)
     {
-        FILE *out_file = fopen(filename_out, "w");
+        out_file = fopen(filename_out, "w");
         if (!out_file)
         {
             return NULL;
