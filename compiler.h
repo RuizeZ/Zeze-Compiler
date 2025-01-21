@@ -4,13 +4,19 @@
 #include <stdio.h>
 #include <stdbool.h>
 
+struct lex_process;
+struct compile_process;
+
 struct pos
 {
     int line;
     int col;
     const char *filename;
 };
-
+enum{
+    LEXICAL_ANALYSIS_ALL_OK,
+    LEXICAL_ANALYSIS_INPUT_ERRORS
+};
 enum
 {
     TOKEN_TYPE_IDENTIFIER,
@@ -46,7 +52,7 @@ struct token
 struct lex_precess;
 typedef char (*LEX_PROCESS_NEXT_CHAR)(struct lex_process *process);
 typedef char (*LEX_PROCESS_PEEK_CHAR)(struct lex_process *process);
-typedef char (*LEX_PROCESS_PUSH_CHAR)(struct lex_process *process, char c);
+typedef void (*LEX_PROCESS_PUSH_CHAR)(struct lex_process *process, char c);
 
 struct lex_precess_functions
 {
@@ -101,4 +107,5 @@ void lex_process_free(struct lex_process *process);
 void *lex_process_private(struct lex_process *process);
 
 struct vector *lex_process_tokens(struct lex_process *process);
+int lex(struct lex_process *process);
 #endif
