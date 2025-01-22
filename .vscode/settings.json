@@ -1,6 +1,8 @@
 {
     "files.associations": {
         "compiler.h": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "stdarg.h": "c",
+        "stdio.h": "c"
     }
 }
