@@ -5,15 +5,20 @@
             "label": "C/C++: clang 生成活动文件",
             "command": "/usr/bin/clang",
             "args": [
-                "-fcolor-diagnostics",
-                "-fansi-escape-codes",
                 "-g",
-                "${file}",
+                "${workspaceFolder}/main.c",
+                "${workspaceFolder}/compiler.c",
+                "${workspaceFolder}/cprocess.c",
+                "${workspaceFolder}/lexer.c",
+                "${workspaceFolder}/lex_process.c",
+                "${workspaceFolder}/helpers/buffer.c",
+                "${workspaceFolder}/helpers/vector.c",
                 "-o",
-                "${fileDirname}/${fileBasenameNoExtension}"
+                "${workspaceFolder}/main",
+                "-I${workspaceFolder}"
             ],
             "options": {
-                "cwd": "${fileDirname}"
+                "cwd": "${workspaceFolder}"
             },
             "problemMatcher": [
                 "$gcc"
