@@ -2,6 +2,7 @@
 #include "helpers/vector.h"
 #include "helpers/buffer.h"
 #include <string.h>
+#include <assert.h>
 
 #define LEX_GETC_IF(buffer, c, exp)     \
     for (c = peekc(); exp; c = peekc()) \
@@ -89,6 +90,63 @@ struct token *token_make_number(struct compile_process *process, char c)
     return token_make_number_for_value(read_number());
 }
 
+static bool op_treated_as_one(char op)
+{
+    return op == '(' || op == '[' || op == ',' || op == '.' || op == '*' || op == '?';
+}
+
+static bool is_single_operator(char op)
+{
+    return op == '+' || op == '-' || op == '/' || op == '*' || op == '%' || op == '^' || op == '&' || op == '|' || op == '~' || op == '!' || op == '<' || op == '>' || op == '=' || op == '(' || op == '[' || op == ',' || op == '.' || op == '?';
+}
+
+const char *read_op()
+{
+    bool single_operator = true;
+    char op = nextc();
+    struct buffer *buffer = buffer_create();
+    buffer_write(buffer, op);
+    if (!op_treated_as_one(op))
+    {
+        op = peekc();
+        if (is_single_operator(op))
+        {
+            buffer_write(buffer, op);
+            nextc();
+            single_operator = false;
+        }
+    }
+    buffer_write(buffer, 0x00);
+    char *ptr = buffer_ptr(buffer);
+    if (!single_operator)
+    {
+    }
+}
+
+static struct token *token_make_operator_or_string()
+{
+    return NULL;
+}
+
+static struct token *token_make_string(char start_delim, char end_delim)
+{
+    struct buffer *buf = buffer_create();
+    assert(nextc() == start_delim);
+    char c = nextc();
+    for (; c != end_delim && c != EOF; c = nextc())
+    {
+        if (c == '\\')
+        {
+            // we need to handle an escape character
+            continue;
+        }
+        buffer_write(buf, c);
+    }
+    buffer_write(buf, 0x00);
+    return token_create(&(struct token){
+        .type = TOKEN_TYPE_STRING, .sval = buffer_ptr(buf)});
+}
+
 struct token *read_next_token()
 {
     struct token *token = NULL;
@@ -97,6 +155,12 @@ struct token *read_next_token()
     {
     NUMERIC_CASES:
         token = token_make_number(lex_process->compiler, c);
+        break;
+    OPERATOR_CASE_EXCLUDING_DIVISION:
+        token = token_make_operator_or_string();
+        break;
+    case '"':
+        token = token_make_string('"', '"');
         break;
     case ' ':
     case '\t':
