@@ -3,6 +3,10 @@
 
 #include <stdio.h>
 #include <stdbool.h>
+#include <string.h>
+
+#define S_EQ(str, str2) \
+    (str && str2 && (strcmp(str, str2) == 0))
 
 struct lex_process;
 struct compile_process;
@@ -146,4 +150,6 @@ void *lex_process_private(struct lex_process *process);
 
 struct vector *lex_process_tokens(struct lex_process *process);
 int lex(struct lex_process *process);
+bool tocken_if_keyword(struct token *token, const char *value);
+static struct token *token_make_string(char start_delim, char end_delim);
 #endif

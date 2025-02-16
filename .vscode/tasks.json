@@ -11,6 +11,7 @@
                 "${workspaceFolder}/cprocess.c",
                 "${workspaceFolder}/lexer.c",
                 "${workspaceFolder}/lex_process.c",
+                "${workspaceFolder}/tocken.c",
                 "${workspaceFolder}/helpers/buffer.c",
                 "${workspaceFolder}/helpers/vector.c",
                 "-o",
