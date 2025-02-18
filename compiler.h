@@ -49,6 +49,16 @@ struct pos
     case '.':                            \
     case '?'
 
+#define SYMBOL_CASE \
+    case '{':       \
+    case '}':       \
+    case ':':       \
+    case ';':       \
+    case '#':       \
+    case '\\':       \
+    case ')':       \
+    case ']'
+
 enum
 {
     LEXICAL_ANALYSIS_ALL_OK,
@@ -138,7 +148,7 @@ char compile_process_next_char(struct lex_process *lex_process);
 char compile_process_peek_char(struct lex_process *lex_process);
 void compile_process_push_char(struct lex_process *lex_process, char c);
 
-void compile_error(struct compile_process *process, const char *msg, ...);
+void compiler_error(struct compile_process *process, const char *msg, ...);
 
 void compile_warning(struct compile_process *process, const char *msg, ...);
 

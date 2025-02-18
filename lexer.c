@@ -3,6 +3,7 @@
 #include "helpers/buffer.h"
 #include <string.h>
 #include <assert.h>
+#include <ctype.h>
 
 #define LEX_GETC_IF(buffer, c, exp)     \
     for (c = peekc(); exp; c = peekc()) \
@@ -148,9 +149,14 @@ const char *read_op()
     }
     else if (!op_valid(ptr))
     {
-        compile_error(lex_process->compiler, "Invalid operator: %s\n", ptr);
+        compiler_error(lex_process->compiler, "Invalid operator: %s\n", ptr);
     }
     return ptr;
+}
+
+bool lex_is_in_expression()
+{
+    return lex_process->currtent_expression_count > 0;
 }
 
 static void lex_new_expression()
@@ -160,6 +166,17 @@ static void lex_new_expression()
     if (lex_process->currtent_expression_count == 1)
     {
         lex_process->parenthsess_buffer = buffer_create();
+    }
+}
+// close the expression
+static void lex_finish_expression()
+{
+    // ) -> symble
+    lex_process->currtent_expression_count--;
+    // there is no ( to match )
+    if (lex_process->currtent_expression_count < 0)
+    {
+        compiler_error(lex_process->compiler, "Unexpected ')'\n");
     }
 }
 
@@ -179,7 +196,7 @@ static struct token *token_make_operator_or_string()
         .type = TOKEN_TYPE_OPERATOR, .sval = read_op()});
     if (op == '(')
     {
-        lex_process->currtent_expression_count++;
+        lex_new_expression();
     }
     return token;
 }
@@ -203,6 +220,44 @@ static struct token *token_make_string(char start_delim, char end_delim)
         .type = TOKEN_TYPE_STRING, .sval = buffer_ptr(buf)});
 }
 
+static struct token *token_make_symbol()
+{
+    char c = nextc();
+    if (c == ')')
+    {
+        lex_finish_expression();
+    }
+
+    struct token *token = token_create(&(struct token){
+        .type = TOKEN_TYPE_SYMBOL, .cval = c});
+    return token;
+}
+
+static struct token *token_make_identifier_or_keyword()
+{
+    struct buffer *buf = buffer_create();
+    char c = 0;
+    LEX_GETC_IF(buf, c, (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_');
+
+    // null terminator
+    buffer_write(buf, 0x00);
+
+    // check if this is a keyword
+
+    return token_create(&(struct token){
+        .type = TOKEN_TYPE_IDENTIFIER, .sval = buffer_ptr(buf)});
+}
+
+struct token *read_special_token()
+{
+    char c = peekc();
+    if (isalpha(c) || c == '_')
+    {
+        return token_make_identifier_or_keyword();
+    }
+    return NULL;
+}
+
 struct token *read_next_token()
 {
     struct token *token = NULL;
@@ -215,6 +270,9 @@ struct token *read_next_token()
     OPERATOR_CASE_EXCLUDING_DIVISION:
         token = token_make_operator_or_string();
         break;
+    SYMBOL_CASE:
+        token = token_make_symbol();
+        break;
     case '"':
         token = token_make_string('"', '"');
         break;
@@ -226,7 +284,12 @@ struct token *read_next_token()
         break;
 
     default:
-        compile_error(lex_process->compiler, "Unexpected token\n");
+        token = read_special_token();
+        if (!token)
+        {
+            compiler_error(lex_process->compiler, "Unexpected token\n");
+        }
+
         break;
     }
     return token;
