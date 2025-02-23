@@ -180,6 +180,45 @@ static void lex_finish_expression()
     }
 }
 
+bool is_keyword(const char *str)
+{
+    return S_EQ(str, "unsigned") ||
+           S_EQ(str, "signed") ||
+           S_EQ(str, "char") ||
+           S_EQ(str, "short") ||
+           S_EQ(str, "int") ||
+           S_EQ(str, "long") ||
+           S_EQ(str, "float") ||
+           S_EQ(str, "double") ||
+           S_EQ(str, "void") ||
+           S_EQ(str, "struct") ||
+           S_EQ(str, "enum") ||
+           S_EQ(str, "union") ||
+           S_EQ(str, "const") ||
+           S_EQ(str, "static") ||
+           S_EQ(str, "extern") ||
+           S_EQ(str, "auto") ||
+           S_EQ(str, "register") ||
+           S_EQ(str, "volatile") ||
+           S_EQ(str, "inline") ||
+           S_EQ(str, "restrict") ||
+           S_EQ(str, "sizeof") ||
+           S_EQ(str, "typedef") ||
+           S_EQ(str, "return") ||
+           S_EQ(str, "if") ||
+           S_EQ(str, "else") ||
+           S_EQ(str, "switch") ||
+           S_EQ(str, "case") ||
+           S_EQ(str, "default") ||
+           S_EQ(str, "while") ||
+           S_EQ(str, "do") ||
+           S_EQ(str, "for") ||
+           S_EQ(str, "break") ||
+           S_EQ(str, "continue") ||
+           S_EQ(str, "goto") ||
+           S_EQ(str, "void");
+}
+
 static struct token *token_make_operator_or_string()
 {
     char op = peekc();
@@ -201,6 +240,70 @@ static struct token *token_make_operator_or_string()
     return token;
 }
 
+struct token *token_make_one_line_comment()
+{
+    struct buffer *buffer = buffer_create();
+    char c = 0;
+    LEX_GETC_IF(buffer, c, c != '\n' && c != EOF);
+    // hello world
+    return token_create(&(struct token){
+        .type = TOKEN_TYPE_COMMENT, .sval = buffer_ptr(buffer)});
+}
+
+struct token *token_make_multiline_comment()
+{
+    struct buffer *buffer = buffer_create();
+    char c = 0;
+    while (1)
+    {
+        LEX_GETC_IF(buffer, c, c != '*' && c != EOF);
+        if (c == EOF)
+        {
+            compiler_error(lex_process->compiler, "Unexpected EOF\n");
+        }
+        else if (c == '*')
+        {
+            // skip the *
+            nextc();
+            if (peekc() == '/')
+            {
+                /**
+                 *  end
+                 */
+                nextc();
+                break;
+            }
+        }
+    }
+
+    // hello world
+    return token_create(&(struct token){
+        .type = TOKEN_TYPE_COMMENT, .sval = buffer_ptr(buffer)});
+}
+
+struct token *handle_comment()
+{
+    char c = peekc();
+    if (c == '/')
+    {
+        nextc();
+        if (peekc() == '/')
+        {
+            //
+            nextc();
+            return token_make_one_line_comment();
+        }
+        else if (peekc() == '*')
+        {
+            nextc();
+            return token_make_multiline_comment();
+        }
+        pushc('/');
+        return token_make_operator_or_string();
+    }
+
+    return NULL;
+}
 static struct token *token_make_string(char start_delim, char end_delim)
 {
     struct buffer *buf = buffer_create();
@@ -243,6 +346,11 @@ static struct token *token_make_identifier_or_keyword()
     buffer_write(buf, 0x00);
 
     // check if this is a keyword
+    if (is_keyword(buffer_ptr(buf)))
+    {
+        return token_create(&(struct token){
+            .type = TOKEN_TYPE_KEYWORD, .sval = buffer_ptr(buf)});
+    }
 
     return token_create(&(struct token){
         .type = TOKEN_TYPE_IDENTIFIER, .sval = buffer_ptr(buf)});
@@ -258,10 +366,23 @@ struct token *read_special_token()
     return NULL;
 }
 
+struct token *token_make_newline()
+{
+    nextc();
+    return token_create(&(struct token){
+        .type = TOKEN_TYPE_NEWLINE});
+}
+
 struct token *read_next_token()
 {
     struct token *token = NULL;
     char c = peekc();
+    token = handle_comment();
+    if (token)
+    {
+        return token;
+    }
+
     switch (c)
     {
     NUMERIC_CASES:
@@ -279,6 +400,9 @@ struct token *read_next_token()
     case ' ':
     case '\t':
         token = handle_whitespace();
+        break;
+    case '\n':
+        token = token_make_newline();
         break;
     case EOF:
         break;
