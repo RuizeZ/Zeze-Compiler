@@ -5,3 +5,5 @@ if while
 /*
 asdf
 */
+'a' 'c'
+0xABC1

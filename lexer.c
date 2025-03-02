@@ -42,6 +42,13 @@ static char nextc()
     return c;
 }
 
+static char assert_next_char(char c)
+{
+    char next_c = nextc();
+    assert(next_c == c);
+    return next_c;
+}
+
 struct token *token_create(struct token *_token)
 {
     memcpy(&tmp_token, _token, sizeof(struct token));
@@ -373,6 +380,94 @@ struct token *token_make_newline()
         .type = TOKEN_TYPE_NEWLINE});
 }
 
+char lex_get_escaped_char(char c)
+{
+    switch (c)
+    {
+    case 'n':
+        return '\n';
+    case 't':
+        return '\t';
+    case '\\':
+        return '\\';
+    case '\'':
+        return '\'';
+    default:
+        compiler_error(lex_process->compiler, "Invalid escape character: \\%c\n", c);
+    }
+    return 0;
+}
+
+void lexer_pop_token()
+{
+    vector_pop(lex_process->token_vec);
+}
+
+bool is_hex_cahr(char c)
+{
+    c = tolower(c);
+    return (c >= '0' && c <= '9') || (c >= 'a' && c <= 'f');
+}
+
+const char *read_hex_number_str()
+{
+    struct buffer *buffer = buffer_create();
+    char c = peekc();
+    LEX_GETC_IF(buffer, c, is_hex_cahr(c));
+    // wrtie our null terminator
+    buffer_write(buffer, 0x00);
+    return buffer_ptr(buffer);
+}
+
+struct token *token_make_special_number_hexadecimal()
+{
+    // skip the "x"
+    nextc();
+
+    unsigned long number = 0;
+    const char *number_str = read_hex_number_str();
+    number = strtol(number_str, 0, 16);
+    return token_make_number_for_value(number);
+}
+
+struct token *token_make_special_number()
+{
+    struct token *token = NULL;
+    struct token *last_token = lexer_last_token();
+
+    // pop off 0
+    lexer_pop_token();
+
+    char c = peekc();
+    // 0x123
+    if (c == 'x')
+    {
+        token = token_make_special_number_hexadecimal();
+    }
+
+    return token;
+}
+
+struct token *token_make_quote()
+{
+    assert_next_char('\'');
+    char c = nextc();
+    // \n
+    if (c == '\\')
+    {
+        // \n -> c = n
+        c = nextc();
+        c = lex_get_escaped_char(c);
+    }
+    if (nextc() != '\'')
+    {
+        compiler_error(lex_process->compiler, "cannot find ending ' character\n");
+    }
+
+    return token_create(&(struct token){
+        .type = TOKEN_TYPE_NUMBER, .cval = c});
+}
+
 struct token *read_next_token()
 {
     struct token *token = NULL;
@@ -394,8 +489,14 @@ struct token *read_next_token()
     SYMBOL_CASE:
         token = token_make_symbol();
         break;
+    case 'x':
+        token = token_make_special_number();
+        break;
     case '"':
         token = token_make_string('"', '"');
+        break;
+    case '\'':
+        token = token_make_quote();
         break;
     case ' ':
     case '\t':
